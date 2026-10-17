@@ -13,6 +13,9 @@ faces.pkl
 # attendance records
 attendance.db
 attendance_export.csv
+*.pkl
+attendance.db
+attendance_export.csv
 
 # python junk
 __pycache__/
