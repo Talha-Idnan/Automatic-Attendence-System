@@ -5,3 +5,17 @@ venv/
 ai_agent/
 faces.pkl
 faces_gpu.pkl
+# biometric / private data
+faces_gpu.pkl
+faces.pkl
+*.pkl
+
+# attendance records
+attendance.db
+attendance_export.csv
+
+# python junk
+__pycache__/
+*.pyc
+.venv/
+venv/

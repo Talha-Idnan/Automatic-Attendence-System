@@ -15,6 +15,7 @@ Usage:
 NOTE: this version uses margin crops + fp32, so embeddings differ from older versions.
 Delete the old faces_gpu.pkl and enroll again.
 """
+import attendance_db
 import os
 import sys
 import time
@@ -68,8 +69,8 @@ def save_db(people):
 
 
 def on_face_detected(name):
-    # FUTURE: replace with attendance/database logic (mark `name` present once per day)
-    print(f"{name} face detected")
+    if attendance_db.mark_present(name):
+        print(f"{name} marked PRESENT")
 
 
 def centroid(emb):
@@ -400,12 +401,40 @@ def list_people():
     else:
         print("No one enrolled yet.")
 
+def clean():
+    people = load_db()
+    if not people:
+        print("No one enrolled.")
+        return
+    for _ in range(2):  # two passes: clean, recompute centers, clean again
+        cents = {n: centroid(E) for n, E in people.items()}
+        for n, E in people.items():
+            own = E @ cents[n]
+            keep = own >= 0.6                                  # must fit its own person
+            for m, c in cents.items():
+                if m != n:
+                    keep &= own > (E @ c + 0.05)               # must be closer to self than to others
+            if keep.sum() >= 10:                               # never wipe a person out
+                people[n] = E[keep]
+    for n, E in people.items():
+        print(f"{n}: {len(E)} samples kept")
+    save_db(people)
+    print("Cleaned. Now run 'check' again.")
 
 # ---------------------------------------------------------------- main
+# ---------------------------------------------------------------- main
 if __name__ == "__main__":
-    modes = {"enroll": enroll, "run": run, "check": check, "delete": delete, "list": list_people}
+    modes = {
+        "enroll": enroll,
+        "run": run,
+        "check": check,
+        "clean": clean,
+        "delete": delete,
+        "list": list_people,
+        "today": attendance_db.show_today,
+    }
     if len(sys.argv) == 2 and sys.argv[1] in modes:
         mode = sys.argv[1]
     else:
-        mode = input("Type 'enroll', 'run', 'check', 'delete' or 'list': ").strip().lower()
+        mode = input(f"Type one of: {', '.join(modes)}: ").strip().lower()
     modes.get(mode, lambda: print("Invalid choice."))()
